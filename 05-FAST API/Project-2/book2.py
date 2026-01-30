@@ -1,6 +1,10 @@
 from typing import Optional
-from fastapi import Body, FastAPI
+from fastapi import Body, FastAPI, Path, Query, HTTPException
 from pydantic import BaseModel, Field
+from starlette import status
+
+# Path to validate path
+# Query to validate Query
 
 app = FastAPI()
 
@@ -13,12 +17,13 @@ class Book():
     rating : int
     publish_date : int
 
-    def __init__(self, id, title, author, description, rating):
+    def __init__(self, id, title, author, description, rating,publish_date):
         self.id = id
         self.title = title
         self.author = author
         self.description = description
         self.rating = rating
+        self.publish_date = publish_date
 
 # Field will make sure all validations
 class BookRequest(BaseModel):
@@ -53,7 +58,7 @@ books = [
 ]
 
 
-@app.get('/books')
+@app.get('/books', status_code=status.HTTP_200_OK)
 def read_all_books():
     return books
 
@@ -62,7 +67,7 @@ def read_all_books():
 # def creat_book(book=Body()):
 #     books.append(book)
 
-@app.post('/create_book')
+@app.post('/create_book', status_code=status.HTTP_201_CREATED)
 def creat_book(book : BookRequest):
     new_book = Book(**book.dict())
     books.append(give_book_id(new_book))
@@ -76,14 +81,15 @@ def give_book_id(book : Book):
     return book
 
 
-@app.get('/books/book_by_id')
-def read_book_by_id(id:int):
+@app.get('/books/{id}', status_code=status.HTTP_200_OK)
+def read_book_by_id(id:int = Path(gt=0)):
     for i in range(len(books)):
         if books[i].id == id:
             return books[i]
+    raise HTTPException(status_code=404, detail="Item not Found")
 
-@app.get('/book/books_by_rating')
-def read_books_by_ratings(rating:int):
+@app.get('/book/books_by_rating', status_code=status.HTTP_200_OK)
+def read_books_by_ratings(rating:int = Query(gt=0, lt=6)):
     books_to_return = []
     for book in books:
         if book.rating == rating:
@@ -91,26 +97,39 @@ def read_books_by_ratings(rating:int):
     return books_to_return 
 
 
-@app.put('/books/update_book')
+@app.put('/books/update_book', status_code=status.HTTP_204_NO_CONTENT)
 def update_book(book:BookRequest):
+    flag = False
     for i in range(len(books)):
         if books[i].id == book.id:
             books[i] = book
-    for i in books:
-        print(type(i))
+            flag = True
+    if not flag:
+        raise HTTPException(status_code=404, detail="Item not Found") 
 
 
-@app.delete('/books/delete_book')
-def delete_book(id:int):
+@app.delete('/books/delete_book/{id}', status_code=status.HTTP_204_NO_CONTENT)
+def delete_book(id:int = Path(gt=0)):
+    flag = False
     for i in range(len(books)):
-        if books[i].id == book.id:
+        if books[i].id == id:
             books.pop(i)
+            flag = True
             break
+    if not flag:
+        raise HTTPException(status_code=404, detail="Item not Found") 
 
-@app.get('/books/by_date')
-def read_books_by_date(date:int):
+@app.get('/books/by_date/', status_code=status.HTTP_200_OK)
+def read_books_by_date(pub_date:int = Query(gt=1999, lt = 2026)):
     books_to_return = []
     for book in books:
-        if book.publish_date == date:
+        if book.publish_date == pub_date:
             books_to_return.append(book)
-    return b
+    return books_to_return
+
+
+
+
+
+
+
